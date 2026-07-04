@@ -1,5 +1,7 @@
 # oteldb e2e
 
+[![e2e](https://github.com/oteldb/e2e/actions/workflows/e2e.yml/badge.svg)](https://github.com/oteldb/e2e/actions/workflows/e2e.yml)
+
 End-to-end tests for [`oteldb`](../oteldb) driven through the
 [`operator`](../operator), running on a real (in-Docker) Kubernetes cluster via
 [kind](https://kind.sigs.k8s.io/).

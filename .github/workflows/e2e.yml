@@ -1,0 +1,96 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One run per ref; cancel superseded runs.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: vet
+        run: go vet ./...
+
+      - name: build (incl. tests)
+        run: go build ./... && go test -run xxxNONExxx ./...
+
+  e2e:
+    name: e2e (kind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # This repo plus the two sibling source trees it builds from. They are separate modules;
+      # the suite shells out to `go build`/`make` inside each (no go replace needed), so they only
+      # have to be present at OTELDB_SRC / OPERATOR_SRC.
+      - name: Checkout e2e
+        uses: actions/checkout@v4
+        with:
+          path: e2e
+
+      - name: Checkout oteldb
+        uses: actions/checkout@v4
+        with:
+          repository: oteldb/oteldb
+          path: oteldb
+
+      - name: Checkout operator
+        uses: actions/checkout@v4
+        with:
+          repository: oteldb/operator
+          path: operator
+
+      # oteldb has the strictest Go directive of the three, so build everything with it.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: oteldb/go.mod
+          cache-dependency-path: |
+            e2e/go.sum
+            oteldb/go.sum
+            operator/go.sum
+
+      # Install the kind binary only; the suite creates its own multi-node cluster from kind.yaml.
+      - name: Install kind
+        uses: helm/kind-action@v1
+        with:
+          install_only: true
+          version: v0.30.0
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.33.0
+
+      - name: Run e2e suite
+        working-directory: e2e
+        env:
+          OTELDB_SRC: ${{ github.workspace }}/oteldb
+          OPERATOR_SRC: ${{ github.workspace }}/operator
+        run: make test
