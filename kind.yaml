@@ -1,0 +1,11 @@
+# Kind cluster for the oteldb e2e suite: one control-plane and three workers so the three
+# symmetric oteldb replicas (plus the dev etcd) can spread across nodes and pod anti-affinity /
+# topology-spread behaves like a real deployment. Chaos specs delete pods/PVCs and rely on the
+# StatefulSet rescheduling onto a surviving node.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker

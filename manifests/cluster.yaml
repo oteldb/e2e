@@ -1,0 +1,49 @@
+# The OtelDBCluster exercised by the e2e suite: three symmetric nodes on the per-node `file`
+# backend with replication factor 2, so a single node loss (chaos specs) is survivable and a
+# wiped node re-replicates its shards from a peer. Image is pinned to the locally built,
+# kind-loaded oteldb (see internal/build); imagePullPolicy IfNotPresent keeps it from reaching
+# for the registry. Sizes/resources are trimmed to run comfortably inside kind.
+apiVersion: db.oteldb.io/v1alpha1
+kind: OtelDBCluster
+metadata:
+  name: oteldb
+spec:
+  replicas: 3
+  image: oteldb/oteldb:e2e
+  imagePullPolicy: IfNotPresent
+  logLevel: info
+
+  etcd:
+    endpoints:
+      - "http://etcd:2379"
+
+  storage:
+    backend: file
+    dir: /var/lib/oteldb
+    size: 2Gi
+
+  cluster:
+    replicationFactor: 2
+    shardsPerTenant: 4
+    peerPort: 7946
+
+  signals:
+    metrics: true
+    logs: true
+    traces: true
+    profiles: true
+
+  engine:
+    # Flush the head to durable parts quickly so the PVC-loss chaos spec exercises recovery of
+    # persisted (not just in-memory) data from a replica.
+    flushInterval: 10s
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+  service:
+    type: ClusterIP

@@ -1,0 +1,13 @@
+# Build artifacts / local binaries
+/bin/
+/probe
+*.test
+*.out
+
+# Logs and scratch output
+*.log
+
+# Editor/OS cruft
+.idea/
+.vscode/
+.DS_Store
